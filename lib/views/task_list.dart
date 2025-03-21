@@ -27,7 +27,7 @@ class TaskList extends StatelessWidget {
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       IconButton(
-                        icon: Icon(Icons.edit, color: Colors.blue),
+                        icon: Icon(Icons.visibility, color: Colors.blue),
                         onPressed: () {
                           Navigator.push(
                           context,
@@ -35,6 +35,7 @@ class TaskList extends StatelessWidget {
                             builder: (context) => TaskDetail(taskId: task.id),
                           ),
                         );
+                        context.read<TaskBloc>().add(LoadTasks())
                         },
                       ),
                       IconButton(
@@ -86,7 +87,7 @@ void _showAddTaskDialog(BuildContext context) {
             TextField(
               controller: categoryIdController,
               decoration: InputDecoration(labelText: "Category ID"),
-              keyboardType: TextInputType.number, // Ensures numeric input
+              keyboardType: TextInputType.number,
             ),
           ],
         ),

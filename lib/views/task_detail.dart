@@ -1,38 +1,31 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import '../models/task_model.dart';
-import '../services/api_service.dart';
+import '../bloc/task_bloc.dart';
+import '../bloc/task_event.dart';
+import '../bloc/task_state.dart';
 
-class TaskDetail extends StatefulWidget {
+class TaskDetail extends StatelessWidget {
   final int taskId;
 
   const TaskDetail({Key? key, required this.taskId}) : super(key: key);
 
   @override
-  _TaskDetailState createState() => _TaskDetailState();
-}
-
-class _TaskDetailState extends State<TaskDetail> {
-  late Future<Task> _taskFuture;
-
-  @override
-  void initState() {
-    super.initState();
-    _taskFuture = ApiService().getTaskById(widget.taskId);
-  }
-
-  @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: Text("Task Details")),
-      body: FutureBuilder<Task>(
-        future: _taskFuture,
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
+      body: BlocBuilder<TaskBloc, TaskState>(
+        builder: (context, state) {
+          if (state is TaskLoading) {
             return Center(child: CircularProgressIndicator());
-          } else if (snapshot.hasError) {
-            return Center(child: Text("Error: ${snapshot.error}"));
-          } else if (snapshot.hasData) {
-            final task = snapshot.data!;
+          } else if (state is TaskError) {
+            return Center(child: Text("Error: ${state.message}"));
+          } else if (state is TaskLoaded) {
+            final task = state.tasks.firstWhere(
+              (task) => task.id == taskId,
+              orElse: () => throw Exception("Task with ID $taskId not found"),
+            );
+
             return Padding(
               padding: const EdgeInsets.all(16.0),
               child: Column(
@@ -55,6 +48,13 @@ class _TaskDetailState extends State<TaskDetail> {
                     style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                   ),
                   Text(task.categoryId.toString(), style: TextStyle(fontSize: 16)),
+                  SizedBox(height: 32),
+                  ElevatedButton(
+                    onPressed: () {
+                      _showEditTaskDialog(context, task);
+                    },
+                    child: Text("Edit Task"),
+                  ),
                 ],
               ),
             );
@@ -63,6 +63,67 @@ class _TaskDetailState extends State<TaskDetail> {
           }
         },
       ),
+    );
+  }
+
+  void _showEditTaskDialog(BuildContext context, Task task) {
+    final TextEditingController titleController = TextEditingController(text: task.title);
+    final TextEditingController descriptionController = TextEditingController(text: task.description);
+    final TextEditingController categoryIdController =
+        TextEditingController(text: task.categoryId.toString());
+
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: Text("Edit Task"),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: titleController,
+                decoration: InputDecoration(labelText: "Title"),
+              ),
+              TextField(
+                controller: descriptionController,
+                decoration: InputDecoration(labelText: "Description"),
+              ),
+              TextField(
+                controller: categoryIdController,
+                decoration: InputDecoration(labelText: "Category ID"),
+                keyboardType: TextInputType.number,
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: Text("Cancel"),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                int? categoryId = int.tryParse(categoryIdController.text);
+                if (categoryId != null) {
+                  context.read<TaskBloc>().add(
+                    UpdateTask(
+                      task.id,
+                      titleController.text,
+                      descriptionController.text,
+                      categoryId,
+                    ),
+                  );
+                  Navigator.pop(context);
+                } else {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text("Please enter a valid Category ID.")),
+                  );
+                }
+              },
+              child: Text("Update"),
+            ),
+          ],
+        );
+      },
     );
   }
 }

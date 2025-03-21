@@ -3,8 +3,12 @@ import 'package:http/http.dart' as http;
 import '../models/task_model.dart';
 
 class ApiService {
+  static final ApiService _instance = ApiService._internal();
+  factory ApiService() => _instance;
+  ApiService._internal();
+
   final String baseUrl = "https://jovinil.github.io/task_api/task.json";
-  List<Task> _localTasks = []; // Local mock data container
+  List<Task> _localTasks = []
 
   // Fetch all tasks from GitHub Pages and store them locally
   Future<List<Task>> getTasks() async {
@@ -12,9 +16,9 @@ class ApiService {
       try {
         final response = await http.get(Uri.parse(baseUrl));
         if (response.statusCode == 200) {
-          final data = json.decode(response.body); // Decode the JSON
-          final tasks = data['tasks'] as List; // Access the "tasks" array
-          _localTasks = tasks.map((json) => Task.fromJson(json)).toList(); // Map tasks to the Task model
+          final data = json.decode(response.body); 
+          final tasks = data['tasks'] as List; 
+          _localTasks = tasks.map((json) => Task.fromJson(json)).toList(); 
         } else {
           throw Exception("Failed to load tasks: ${response.statusCode}");
         }
@@ -23,22 +27,28 @@ class ApiService {
         rethrow;
       }
     }
-    return _localTasks; // Return local tasks
+    return _localTasks; 
   }
 
-  // Fetch a specific task by ID
   Future<Task> getTaskById(int id) async {
     if (_localTasks.isEmpty) {
-      await getTasks(); // Ensure tasks are loaded
+      print("Fetching tasks because _localTasks is empty.");
+      await getTasks();
     }
-    final task = _localTasks.firstWhere((task) => task.id == id, orElse: () => throw Exception("Task not found"));
-    return task;
+
+    print("Fetching task by ID: $id");
+    print("Current Local Tasks: ${_localTasks.map((task) => task.toJson()).toList()}");
+
+    return _localTasks.firstWhere((task) => task.id == id, orElse: () {
+      throw Exception("Task with ID $id not found. Available IDs: ${_localTasks.map((task) => task.id).toList()}");
+    });
   }
+
 
   // Create a new task locally
   Future<Task> createTask(String title, String description, int categoryId) async {
     final newTask = Task(
-      id: _localTasks.isEmpty ? 1 : _localTasks.last.id + 1, // Auto-increment ID
+      id: _localTasks.isEmpty ? 1 : _localTasks.last.id + 1,
       title: title,
       description: description,
       categoryId: categoryId,
@@ -50,6 +60,7 @@ class ApiService {
   // Update an existing task locally
   Future<Task> updateTask(int id, String title, String description, int categoryId) async {
     final taskIndex = _localTasks.indexWhere((task) => task.id == id);
+    print("Before update: ${_localTasks.map((task) => task.toJson()).toList()}");
     if (taskIndex == -1) {
       throw Exception("Task with ID $id not found");
     }
@@ -60,6 +71,7 @@ class ApiService {
       categoryId: categoryId,
     );
     _localTasks[taskIndex] = updatedTask;
+    print("After update: ${_localTasks.map((task) => task.toJson()).toList()}");
     return updatedTask;
   }
 
