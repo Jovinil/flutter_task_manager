@@ -29,12 +29,12 @@ class TaskList extends StatelessWidget {
                       IconButton(
                         icon: Icon(Icons.edit, color: Colors.blue),
                         onPressed: () {
-                        //   Navigator.push(
-                        //   context,
-                        //   MaterialPageRoute(
-                        //     builder: (context) => TaskDetail(taskId: task.id),
-                        //   ),
-                        // );
+                          Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => TaskDetail(taskId: task.id),
+                          ),
+                        );
                         },
                       ),
                       IconButton(

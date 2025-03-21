@@ -4,7 +4,7 @@ import '../models/task_model.dart';
 
 class ApiService {
   final String baseUrl = "https://jovinil.github.io/task_api/task.json";
-  List<Task> _localTasks = []; 
+  List<Task> _localTasks = []; // Local mock data container
 
   // Fetch all tasks from GitHub Pages and store them locally
   Future<List<Task>> getTasks() async {
@@ -12,9 +12,10 @@ class ApiService {
       try {
         final response = await http.get(Uri.parse(baseUrl));
         if (response.statusCode == 200) {
-          final data = json.decode(response.body); 
-          final tasks = data['tasks'] as List; 
-          _localTasks = tasks.map((json) => Task.fromJson(json)).toList(); 
+          final data = json.decode(response.body); // Decode the JSON
+          final tasks = data['tasks'] as List; // Access the "tasks" array
+          _localTasks = tasks.map((json) => Task.fromJson(json)).toList(); // Map tasks to the Task model
+        } else {
           throw Exception("Failed to load tasks: ${response.statusCode}");
         }
       } catch (e) {
@@ -25,10 +26,19 @@ class ApiService {
     return _localTasks; // Return local tasks
   }
 
+  // Fetch a specific task by ID
+  Future<Task> getTaskById(int id) async {
+    if (_localTasks.isEmpty) {
+      await getTasks(); // Ensure tasks are loaded
+    }
+    final task = _localTasks.firstWhere((task) => task.id == id, orElse: () => throw Exception("Task not found"));
+    return task;
+  }
+
   // Create a new task locally
   Future<Task> createTask(String title, String description, int categoryId) async {
     final newTask = Task(
-      id: _localTasks.isEmpty ? 1 : _localTasks.last.id + 1, 
+      id: _localTasks.isEmpty ? 1 : _localTasks.last.id + 1, // Auto-increment ID
       title: title,
       description: description,
       categoryId: categoryId,
