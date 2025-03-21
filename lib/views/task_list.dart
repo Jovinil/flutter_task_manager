@@ -35,7 +35,7 @@ class TaskList extends StatelessWidget {
                             builder: (context) => TaskDetail(taskId: task.id),
                           ),
                         );
-                        context.read<TaskBloc>().add(LoadTasks())
+                        context.read<TaskBloc>().add(LoadTasks());
                         },
                       ),
                       IconButton(

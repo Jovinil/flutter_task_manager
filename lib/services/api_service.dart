@@ -8,7 +8,7 @@ class ApiService {
   ApiService._internal();
 
   final String baseUrl = "https://jovinil.github.io/task_api/task.json";
-  List<Task> _localTasks = []
+  List<Task> _localTasks = [];
 
   // Fetch all tasks from GitHub Pages and store them locally
   Future<List<Task>> getTasks() async {
