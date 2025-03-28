@@ -30,12 +30,12 @@ class TaskList extends StatelessWidget {
                         icon: Icon(Icons.visibility, color: Colors.blue),
                         onPressed: () {
                           Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => TaskDetail(taskId: task.id),
-                          ),
-                        );
-                        context.read<TaskBloc>().add(LoadTasks());
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => TaskDetail(taskId: task.id),
+                            ),
+                          );
+                          context.read<TaskBloc>().add(LoadTasks());
                         },
                       ),
                       IconButton(
@@ -67,6 +67,7 @@ void _showAddTaskDialog(BuildContext context) {
   final TextEditingController titleController = TextEditingController();
   final TextEditingController descriptionController = TextEditingController();
   final TextEditingController categoryIdController = TextEditingController();
+  final TextEditingController deadlineController = TextEditingController(); // Added deadline controller
 
   showDialog(
     context: context,
@@ -89,6 +90,10 @@ void _showAddTaskDialog(BuildContext context) {
               decoration: InputDecoration(labelText: "Category ID"),
               keyboardType: TextInputType.number,
             ),
+            TextField(
+              controller: deadlineController,
+              decoration: InputDecoration(labelText: "Deadline (YYYY-MM-DD)"), // Added deadline input
+            ),
           ],
         ),
         actions: [
@@ -105,6 +110,7 @@ void _showAddTaskDialog(BuildContext context) {
                     titleController.text,
                     descriptionController.text,
                     categoryId,
+                    DateTime.parse(deadlineController.text), // Include deadline argument
                   ),
                 );
                 Navigator.pop(context);

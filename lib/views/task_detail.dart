@@ -48,7 +48,14 @@ class TaskDetail extends StatelessWidget {
                     style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                   ),
                   Text(task.categoryId.toString(), style: TextStyle(fontSize: 16)),
+                  SizedBox(height: 16),
+                  Text(
+                    "Deadline:",
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  ),
+                  Text(task.deadline.toLocal().toString(), style: TextStyle(fontSize: 16)),
                   SizedBox(height: 32),
+
                   ElevatedButton(
                     onPressed: () {
                       _showEditTaskDialog(context, task);
@@ -71,6 +78,7 @@ class TaskDetail extends StatelessWidget {
     final TextEditingController descriptionController = TextEditingController(text: task.description);
     final TextEditingController categoryIdController =
         TextEditingController(text: task.categoryId.toString());
+    final TextEditingController deadlineController = TextEditingController(text: task.deadline.toLocal().toString()); // Added deadline controller
 
     showDialog(
       context: context,
@@ -93,6 +101,10 @@ class TaskDetail extends StatelessWidget {
                 decoration: InputDecoration(labelText: "Category ID"),
                 keyboardType: TextInputType.number,
               ),
+              TextField(
+                controller: deadlineController,
+                decoration: InputDecoration(labelText: "Deadline (YYYY-MM-DD)"), // Added deadline input
+              ),
             ],
           ),
           actions: [
@@ -110,6 +122,7 @@ class TaskDetail extends StatelessWidget {
                       titleController.text,
                       descriptionController.text,
                       categoryId,
+                      DateTime.parse(deadlineController.text), // Include deadline argument
                     ),
                   );
                   Navigator.pop(context);

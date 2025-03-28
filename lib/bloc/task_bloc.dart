@@ -25,6 +25,7 @@ class TaskBloc extends Bloc<TaskEvent, TaskState> {
           event.title,
           event.description,
           event.categoryId,
+          event.deadline, // Include deadline argument
         );
         final updatedTasks = List<Task>.from((state as TaskLoaded).tasks)..add(newTask);
         updatedTasks.sort((a, b) => a.title.toLowerCase().compareTo(b.title.toLowerCase()));
@@ -41,6 +42,7 @@ class TaskBloc extends Bloc<TaskEvent, TaskState> {
           event.title,
           event.description,
           event.categoryId,
+          event.deadline, // Include deadline argument
         );
         final updatedTasks = (state as TaskLoaded).tasks.map((task) {
           return task.id == event.id ? updatedTask : task;

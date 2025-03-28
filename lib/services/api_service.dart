@@ -44,21 +44,22 @@ class ApiService {
     });
   }
 
-
   // Create a new task locally
-  Future<Task> createTask(String title, String description, int categoryId) async {
+  Future<Task> createTask(String title, String description, int categoryId, DateTime deadline) async {
     final newTask = Task(
       id: _localTasks.isEmpty ? 1 : _localTasks.last.id + 1,
       title: title,
       description: description,
       categoryId: categoryId,
+      deadline: deadline, // Include deadline when creating a new task
     );
+
     _localTasks.add(newTask);
     return newTask;
   }
 
   // Update an existing task locally
-  Future<Task> updateTask(int id, String title, String description, int categoryId) async {
+  Future<Task> updateTask(int id, String title, String description, int categoryId, DateTime deadline) async {
     final taskIndex = _localTasks.indexWhere((task) => task.id == id);
     print("Before update: ${_localTasks.map((task) => task.toJson()).toList()}");
     if (taskIndex == -1) {
@@ -69,7 +70,9 @@ class ApiService {
       title: title,
       description: description,
       categoryId: categoryId,
+      deadline: deadline, // Include deadline when updating the task
     );
+
     _localTasks[taskIndex] = updatedTask;
     print("After update: ${_localTasks.map((task) => task.toJson()).toList()}");
     return updatedTask;
