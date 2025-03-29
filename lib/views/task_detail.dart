@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../models/task_model.dart';
+import '../models/category_model.dart'; // Import Category model
 import '../bloc/task_bloc.dart';
 import '../bloc/task_event.dart';
 import '../bloc/task_state.dart';
@@ -26,43 +27,45 @@ class TaskDetail extends StatelessWidget {
               orElse: () => throw Exception("Task with ID $taskId not found"),
             );
 
-            return Padding(
+            return SingleChildScrollView(
               padding: const EdgeInsets.all(16.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    "Title:",
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              child: Card(
+                elevation: 4.0,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12.0),
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _buildDetailRow("Title", task.title, Icons.title),
+                      _buildDetailRow("Description", task.description, Icons.description),
+                      _buildDetailRow(
+                        "Category",
+                        state.categories.firstWhere((category) => category.id == task.categoryId).name,
+                        Icons.category,
+                      ),
+                      _buildDetailRow("Deadline", task.deadline.toLocal().toString().split(' ')[0], Icons.calendar_today),
+                      SizedBox(height: 32),
+                      Center(
+                        child: ElevatedButton.icon(
+                          onPressed: () {
+                            _showEditTaskDialog(context, task, state.categories);
+                          },
+                          icon: Icon(Icons.edit),
+                          label: Text("Edit Task"),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.blueAccent,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8.0),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
-                  Text(task.title, style: TextStyle(fontSize: 16)),
-                  SizedBox(height: 16),
-                  Text(
-                    "Description:",
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                  ),
-                  Text(task.description, style: TextStyle(fontSize: 16)),
-                  SizedBox(height: 16),
-                  Text(
-                    "Category ID:",
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                  ),
-                  Text(task.categoryId.toString(), style: TextStyle(fontSize: 16)),
-                  SizedBox(height: 16),
-                  Text(
-                    "Deadline:",
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                  ),
-                  Text(task.deadline.toLocal().toString(), style: TextStyle(fontSize: 16)),
-                  SizedBox(height: 32),
-
-                  ElevatedButton(
-                    onPressed: () {
-                      _showEditTaskDialog(context, task);
-                    },
-                    child: Text("Edit Task"),
-                  ),
-                ],
+                ),
               ),
             );
           } else {
@@ -73,39 +76,111 @@ class TaskDetail extends StatelessWidget {
     );
   }
 
-  void _showEditTaskDialog(BuildContext context, Task task) {
+  Widget _buildDetailRow(String label, String value, IconData icon) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8.0),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(icon, color: Colors.blueAccent),
+          SizedBox(width: 8.0),
+          Text(
+            "$label:",
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+          ),
+          SizedBox(width: 8.0),
+          Expanded(
+            child: Text(
+              value,
+              style: TextStyle(fontSize: 16),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showEditTaskDialog(BuildContext context, Task task, List<Category> categories) {
     final TextEditingController titleController = TextEditingController(text: task.title);
     final TextEditingController descriptionController = TextEditingController(text: task.description);
-    final TextEditingController categoryIdController =
-        TextEditingController(text: task.categoryId.toString());
-    final TextEditingController deadlineController = TextEditingController(text: task.deadline.toLocal().toString()); // Added deadline controller
+    DateTime selectedDate = task.deadline;
+    TimeOfDay selectedTime = TimeOfDay.fromDateTime(task.deadline);
+    int selectedCategoryId = task.categoryId;
+
+    Future<void> _selectDate(BuildContext context) async {
+      final DateTime? picked = await showDatePicker(
+        context: context,
+        initialDate: selectedDate,
+        firstDate: DateTime(2000),
+        lastDate: DateTime(2101),
+      );
+      if (picked != null && picked != selectedDate) {
+        selectedDate = picked;
+      }
+    }
+
+    Future<void> _selectTime(BuildContext context) async {
+      final TimeOfDay? picked = await showTimePicker(
+        context: context,
+        initialTime: selectedTime,
+      );
+      if (picked != null && picked != selectedTime) {
+        selectedTime = picked;
+      }
+    }
 
     showDialog(
       context: context,
       builder: (context) {
         return AlertDialog(
           title: Text("Edit Task"),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(
-                controller: titleController,
-                decoration: InputDecoration(labelText: "Title"),
-              ),
-              TextField(
-                controller: descriptionController,
-                decoration: InputDecoration(labelText: "Description"),
-              ),
-              TextField(
-                controller: categoryIdController,
-                decoration: InputDecoration(labelText: "Category ID"),
-                keyboardType: TextInputType.number,
-              ),
-              TextField(
-                controller: deadlineController,
-                decoration: InputDecoration(labelText: "Deadline (YYYY-MM-DD)"), // Added deadline input
-              ),
-            ],
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(
+                  controller: titleController,
+                  decoration: InputDecoration(labelText: "Title"),
+                ),
+                TextField(
+                  controller: descriptionController,
+                  decoration: InputDecoration(labelText: "Description"),
+                ),
+                DropdownButtonFormField<int>(
+                  value: selectedCategoryId,
+                  decoration: InputDecoration(labelText: "Category"),
+                  items: categories.map((category) {
+                    return DropdownMenuItem<int>(
+                      value: category.id,
+                      child: Text(category.name),
+                    );
+                  }).toList(),
+                  onChanged: (value) {
+                    if (value != null) {
+                      selectedCategoryId = value;
+                    }
+                  },
+                ),
+                Row(
+                  children: [
+                    TextButton(
+                      onPressed: () => _selectDate(context),
+                      child: Text("Select Date"),
+                    ),
+                    Text("${selectedDate.toLocal()}".split(' ')[0]),
+                  ],
+                ),
+                Row(
+                  children: [
+                    TextButton(
+                      onPressed: () => _selectTime(context),
+                      child: Text("Select Time"),
+                    ),
+                    Text("${selectedTime.format(context)}"),
+                  ],
+                ),
+              ],
+            ),
           ),
           actions: [
             TextButton(
@@ -114,23 +189,23 @@ class TaskDetail extends StatelessWidget {
             ),
             ElevatedButton(
               onPressed: () {
-                int? categoryId = int.tryParse(categoryIdController.text);
-                if (categoryId != null) {
-                  context.read<TaskBloc>().add(
-                    UpdateTask(
-                      task.id,
-                      titleController.text,
-                      descriptionController.text,
-                      categoryId,
-                      DateTime.parse(deadlineController.text), // Include deadline argument
-                    ),
-                  );
-                  Navigator.pop(context);
-                } else {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text("Please enter a valid Category ID.")),
-                  );
-                }
+                final DateTime finalDeadline = DateTime(
+                  selectedDate.year,
+                  selectedDate.month,
+                  selectedDate.day,
+                  selectedTime.hour,
+                  selectedTime.minute,
+                );
+                context.read<TaskBloc>().add(
+                  UpdateTask(
+                    task.id,
+                    titleController.text,
+                    descriptionController.text,
+                    selectedCategoryId,
+                    finalDeadline,
+                  ),
+                );
+                Navigator.pop(context);
               },
               child: Text("Update"),
             ),

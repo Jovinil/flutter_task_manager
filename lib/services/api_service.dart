@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import '../models/task_model.dart';
+import '../models/category_model.dart';
 
 class ApiService {
   static final ApiService _instance = ApiService._internal();
@@ -9,38 +10,61 @@ class ApiService {
 
   final String baseUrl = "https://jovinil.github.io/task_api/task.json";
   List<Task> _localTasks = [];
+  List<Category> _localCategories = [];
 
-  // Fetch all tasks from GitHub Pages and store them locally
+  // Fetch all data from GitHub Pages and store them locally
+  Future<void> fetchData() async {
+    try {
+      final response = await http.get(Uri.parse(baseUrl));
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        final tasks = data['tasks'] as List;
+        final categories = data['categories'] as List;
+        
+        _localTasks = tasks.map((json) => Task.fromJson(json)).toList();
+        _localCategories = categories.map((json) => Category.fromJson(json)).toList();
+      } else {
+        throw Exception("Failed to load data: ${response.statusCode}");
+      }
+    } catch (e) {
+      print('Error fetching data: $e');
+      rethrow;
+    }
+  }
+
+  // Get all tasks, fetching from API if needed
   Future<List<Task>> getTasks() async {
     if (_localTasks.isEmpty) {
-      try {
-        final response = await http.get(Uri.parse(baseUrl));
-        if (response.statusCode == 200) {
-          final data = json.decode(response.body); 
-          final tasks = data['tasks'] as List; 
-          _localTasks = tasks.map((json) => Task.fromJson(json)).toList(); 
-        } else {
-          throw Exception("Failed to load tasks: ${response.statusCode}");
-        }
-      } catch (e) {
-        print('Error fetching tasks: $e');
-        rethrow;
-      }
+      await fetchData();
     }
-    return _localTasks; 
+    return _localTasks;
+  }
+
+  // Get all categories, fetching from API if needed
+  Future<List<Category>> getCategories() async {
+    if (_localCategories.isEmpty) {
+      await fetchData();
+    }
+    return _localCategories;
   }
 
   Future<Task> getTaskById(int id) async {
     if (_localTasks.isEmpty) {
-      print("Fetching tasks because _localTasks is empty.");
-      await getTasks();
+      await fetchData();
     }
 
-    print("Fetching task by ID: $id");
-    print("Current Local Tasks: ${_localTasks.map((task) => task.toJson()).toList()}");
-
     return _localTasks.firstWhere((task) => task.id == id, orElse: () {
-      throw Exception("Task with ID $id not found. Available IDs: ${_localTasks.map((task) => task.id).toList()}");
+      throw Exception("Task with ID $id not found");
+    });
+  }
+
+  Future<Category> getCategoryById(int id) async {
+    if (_localCategories.isEmpty) {
+      await fetchData();
+    }
+
+    return _localCategories.firstWhere((category) => category.id == id, orElse: () {
+      throw Exception("Category with ID $id not found");
     });
   }
 
@@ -61,7 +85,6 @@ class ApiService {
   // Update an existing task locally
   Future<Task> updateTask(int id, String title, String description, int categoryId, DateTime deadline) async {
     final taskIndex = _localTasks.indexWhere((task) => task.id == id);
-    print("Before update: ${_localTasks.map((task) => task.toJson()).toList()}");
     if (taskIndex == -1) {
       throw Exception("Task with ID $id not found");
     }
@@ -70,15 +93,13 @@ class ApiService {
       title: title,
       description: description,
       categoryId: categoryId,
-      deadline: deadline, // Include deadline when updating the task
+      deadline: deadline,
     );
 
     _localTasks[taskIndex] = updatedTask;
-    print("After update: ${_localTasks.map((task) => task.toJson()).toList()}");
     return updatedTask;
   }
 
-  // Delete a task locally
   Future<void> deleteTask(int id) async {
     final taskIndex = _localTasks.indexWhere((task) => task.id == id);
     if (taskIndex == -1) {
