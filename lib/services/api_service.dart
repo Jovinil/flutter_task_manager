@@ -11,8 +11,6 @@ class ApiService {
   final String baseUrl = "https://jovinil.github.io/task_api/task.json";
   List<Task> _localTasks = [];
   List<Category> _localCategories = [];
-
-  // Fetch all data from GitHub Pages and store them locally
   Future<void> fetchData() async {
     try {
       final response = await http.get(Uri.parse(baseUrl));
@@ -31,16 +29,12 @@ class ApiService {
       rethrow;
     }
   }
-
-  // Get all tasks, fetching from API if needed
   Future<List<Task>> getTasks() async {
     if (_localTasks.isEmpty) {
       await fetchData();
     }
     return _localTasks;
   }
-
-  // Get all categories, fetching from API if needed
   Future<List<Category>> getCategories() async {
     if (_localCategories.isEmpty) {
       await fetchData();
@@ -67,22 +61,18 @@ class ApiService {
       throw Exception("Category with ID $id not found");
     });
   }
-
-  // Create a new task locally
   Future<Task> createTask(String title, String description, int categoryId, DateTime deadline) async {
     final newTask = Task(
       id: _localTasks.isEmpty ? 1 : _localTasks.last.id + 1,
       title: title,
       description: description,
       categoryId: categoryId,
-      deadline: deadline, // Include deadline when creating a new task
+      deadline: deadline,
     );
 
     _localTasks.add(newTask);
     return newTask;
   }
-
-  // Update an existing task locally
   Future<Task> updateTask(int id, String title, String description, int categoryId, DateTime deadline) async {
     final taskIndex = _localTasks.indexWhere((task) => task.id == id);
     if (taskIndex == -1) {

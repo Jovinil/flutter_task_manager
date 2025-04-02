@@ -6,9 +6,9 @@ class AddTask extends TaskEvent {
   final String title;
   final String description;
   final int categoryId;
-  final DateTime deadline; // Added deadline property
+  final DateTime deadline; 
 
-  AddTask(this.title, this.description, this.categoryId, this.deadline); // Include deadline in constructor
+  AddTask(this.title, this.description, this.categoryId, this.deadline); 
 }
 
 class UpdateTask extends TaskEvent {
@@ -16,11 +16,10 @@ class UpdateTask extends TaskEvent {
   final String title;
   final String description;
   final int categoryId;
-  final DateTime deadline; // Added deadline property
+  final DateTime deadline;
 
 
-
-  UpdateTask(this.id, this.title, this.description, this.categoryId, this.deadline); // Include deadline in constructor
+  UpdateTask(this.id, this.title, this.description, this.categoryId, this.deadline);
 }
 
 class DeleteTask extends TaskEvent {

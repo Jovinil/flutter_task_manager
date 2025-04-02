@@ -8,12 +8,25 @@ import '../bloc/task_event.dart';
 import '../bloc/task_state.dart';
 import 'task_detail.dart';
 
+// Helper function to choose an icon based on category id.
+IconData getCategoryIcon(int categoryId) {
+  switch (categoryId) {
+    case 1:
+      return Icons.work;
+    case 2:
+      return Icons.home;
+    case 3:
+      return Icons.school;
+    default:
+      return Icons.category;
+  }
+}
+
 class TaskList extends StatelessWidget {
   const TaskList({Key? key}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
-    // Ensure Material 3 is enabled in the app theme (to be set in main.dart or theme configuration)
     return Scaffold(
       appBar: AppBar(
         title: const Text("Tasks"),
@@ -66,9 +79,11 @@ class TaskList extends StatelessWidget {
 }
 
 Widget _buildTaskItem(BuildContext context, Task task, List<Category> categories) {
-  // Use Card with subtle elevation and modern rounded corners.
-  final categoryName = categories.firstWhere((category) => category.id == task.categoryId,
-      orElse: () => Category(id: 0, name: "Unknown")).name;
+  final category = categories.firstWhere(
+    (category) => category.id == task.categoryId,
+    orElse: () => Category(id: 0, name: "Unknown"),
+  );
+  final categoryIcon = getCategoryIcon(task.categoryId);
   return Card(
     elevation: 2.0,
     margin: const EdgeInsets.symmetric(horizontal: 16.0),
@@ -85,36 +100,21 @@ Widget _buildTaskItem(BuildContext context, Task task, List<Category> categories
           const SizedBox(height: 4.0),
           Text(task.description),
           const SizedBox(height: 8.0),
-          Text("Category: $categoryName"),
+          Text("Category: ${category.name}"),
           const SizedBox(height: 4.0),
           Text(
-            "Deadline: ${task.deadline.toLocal().toString().split(' ')[0]}",
+            "Deadline: ${task.deadline.toLocal().toString().substring(0,16)}",
             style: const TextStyle(color: Colors.grey),
           ),
         ],
       ),
-      trailing: Wrap(
-        spacing: 4.0,
-        children: [
-          IconButton(
-            tooltip: "View Details",
-            icon: const Icon(Icons.visibility, color: Colors.blue),
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (context) => TaskDetail(taskId: task.id)),
-              );
-            },
-          ),
-          IconButton(
-            tooltip: "Delete Task",
-            icon: const Icon(Icons.delete, color: Colors.red),
-            onPressed: () {
-              context.read<TaskBloc>().add(DeleteTask(task.id));
-            },
-          ),
-        ],
-      ),
+      trailing: Icon(categoryIcon, color: Colors.blueAccent),
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (context) => TaskDetail(taskId: task.id)),
+        );
+      },
     ),
   );
 }
@@ -122,7 +122,7 @@ Widget _buildTaskItem(BuildContext context, Task task, List<Category> categories
 void _showAddTaskDialog(BuildContext context, List<Category> categories) {
   showModalBottomSheet(
     context: context,
-    isScrollControlled: true, // allows the sheet to expand with keyboard
+    isScrollControlled: true,
     shape: const RoundedRectangleBorder(
       borderRadius: BorderRadius.vertical(top: Radius.circular(20.0)),
     ),
@@ -235,7 +235,7 @@ class _AddTaskFormState extends State<_AddTaskForm> {
                 Expanded(
                   child: OutlinedButton(
                     onPressed: _selectDate,
-                    child: Text("Select Date: ${selectedDate.toLocal().toString().split(' ')[0]}"),
+                    child: Text("Select Date: ${selectedDate.toLocal().toString().substring(0,10)}"),
                   ),
                 ),
               ],

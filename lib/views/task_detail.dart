@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../models/task_model.dart';
-import '../models/category_model.dart'; // Import Category model
+import '../models/category_model.dart'; 
 import '../bloc/task_bloc.dart';
 import '../bloc/task_event.dart';
 import '../bloc/task_state.dart';
@@ -14,11 +14,37 @@ class TaskDetail extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text("Task Details")),
+      appBar: AppBar(
+        title: const Text("Task Details"),
+        actions: [
+          Builder(
+            builder: (context) {
+              return IconButton(
+                tooltip: "Delete Task",
+                icon: const Icon(Icons.delete, color: Colors.red),
+                onPressed: () {
+                  final state = context.read<TaskBloc>().state;
+                  if (state is TaskLoaded) {
+                    try {
+                      final task = state.tasks.firstWhere((task) => task.id == taskId);
+                      context.read<TaskBloc>().add(DeleteTask(task.id));
+                      Navigator.pop(context);
+                    } catch (error) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text("Task not found")),
+                      );
+                    }
+                  }
+                },
+              );
+            },
+          )
+        ],
+      ),
       body: BlocBuilder<TaskBloc, TaskState>(
         builder: (context, state) {
           if (state is TaskLoading) {
-            return Center(child: CircularProgressIndicator());
+            return const Center(child: CircularProgressIndicator());
           } else if (state is TaskError) {
             return Center(child: Text("Error: ${state.message}"));
           } else if (state is TaskLoaded) {
@@ -46,15 +72,15 @@ class TaskDetail extends StatelessWidget {
                         state.categories.firstWhere((category) => category.id == task.categoryId).name,
                         Icons.category,
                       ),
-                      _buildDetailRow("Deadline", task.deadline.toLocal().toString().split(' ')[0], Icons.calendar_today),
-                      SizedBox(height: 32),
+                      _buildDetailRow("Deadline", task.deadline.toLocal().toString().substring(0, 16), Icons.calendar_today),
+                      const SizedBox(height: 32),
                       Center(
                         child: ElevatedButton.icon(
                           onPressed: () {
                             _showEditTaskDialog(context, task, state.categories);
                           },
-                          icon: Icon(Icons.edit),
-                          label: Text("Edit Task"),
+                          icon: const Icon(Icons.edit),
+                          label: const Text("Edit Task"),
                           style: ElevatedButton.styleFrom(
                             backgroundColor: Colors.blueAccent,
                             shape: RoundedRectangleBorder(
@@ -69,7 +95,7 @@ class TaskDetail extends StatelessWidget {
               ),
             );
           } else {
-            return Center(child: Text("No task found"));
+            return const Center(child: Text("No task found"));
           }
         },
       ),
@@ -83,16 +109,16 @@ class TaskDetail extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Icon(icon, color: Colors.blueAccent),
-          SizedBox(width: 8.0),
+          const SizedBox(width: 8.0),
           Text(
             "$label:",
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
           ),
-          SizedBox(width: 8.0),
+          const SizedBox(width: 8.0),
           Expanded(
             child: Text(
               value,
-              style: TextStyle(fontSize: 16),
+              style: const TextStyle(fontSize: 16),
             ),
           ),
         ],
@@ -101,117 +127,207 @@ class TaskDetail extends StatelessWidget {
   }
 
   void _showEditTaskDialog(BuildContext context, Task task, List<Category> categories) {
-    final TextEditingController titleController = TextEditingController(text: task.title);
-    final TextEditingController descriptionController = TextEditingController(text: task.description);
-    DateTime selectedDate = task.deadline;
-    TimeOfDay selectedTime = TimeOfDay.fromDateTime(task.deadline);
-    int selectedCategoryId = task.categoryId;
-
-    Future<void> _selectDate(BuildContext context) async {
-      final DateTime? picked = await showDatePicker(
-        context: context,
-        initialDate: selectedDate,
-        firstDate: DateTime(2000),
-        lastDate: DateTime(2101),
-      );
-      if (picked != null && picked != selectedDate) {
-        selectedDate = picked;
-      }
-    }
-
-    Future<void> _selectTime(BuildContext context) async {
-      final TimeOfDay? picked = await showTimePicker(
-        context: context,
-        initialTime: selectedTime,
-      );
-      if (picked != null && picked != selectedTime) {
-        selectedTime = picked;
-      }
-    }
-
-    showDialog(
+    showModalBottomSheet(
       context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20.0)),
+      ),
       builder: (context) {
-        return AlertDialog(
-          title: Text("Edit Task"),
-          content: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
+        return DraggableScrollableSheet(
+          expand: false,
+          initialChildSize: 0.6,
+          minChildSize: 0.4,
+          maxChildSize: 0.8,
+          builder: (context, scrollController) {
+            return Padding(
+              padding: EdgeInsets.only(
+                bottom: MediaQuery.of(context).viewInsets.bottom,
+                left: 16.0,
+                right: 16.0,
+                top: 16.0,
+              ),
+              child: _EditTaskForm(
+                task: task,
+                categories: categories,
+                scrollController: scrollController,
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+}
+
+class _EditTaskForm extends StatefulWidget {
+  final Task task;
+  final List<Category> categories;
+  final ScrollController scrollController;
+
+  const _EditTaskForm({
+    Key? key,
+    required this.task,
+    required this.categories,
+    required this.scrollController,
+  }) : super(key: key);
+
+  @override
+  State<_EditTaskForm> createState() => _EditTaskFormState();
+}
+
+class _EditTaskFormState extends State<_EditTaskForm> {
+  final _formKey = GlobalKey<FormState>();
+  late TextEditingController titleController;
+  late TextEditingController descriptionController;
+
+  late DateTime selectedDate;
+  late TimeOfDay selectedTime;
+  late int selectedCategoryId;
+
+  @override
+  void initState() {
+    super.initState();
+    titleController = TextEditingController(text: widget.task.title);
+    descriptionController = TextEditingController(text: widget.task.description);
+    selectedDate = widget.task.deadline;
+    selectedTime = TimeOfDay.fromDateTime(widget.task.deadline);
+    selectedCategoryId = widget.task.categoryId;
+  }
+
+  @override
+  void dispose() {
+    titleController.dispose();
+    descriptionController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _selectDate() async {
+    final DateTime? picked = await showDatePicker(
+      context: context,
+      initialDate: selectedDate,
+      firstDate: DateTime(2000),
+      lastDate: DateTime(2101),
+    );
+    if (picked != null && picked != selectedDate) {
+      setState(() {
+        selectedDate = picked;
+      });
+    }
+  }
+
+  Future<void> _selectTime() async {
+    final TimeOfDay? picked = await showTimePicker(
+      context: context,
+      initialTime: selectedTime,
+    );
+    if (picked != null && picked != selectedTime) {
+      setState(() {
+        selectedTime = picked;
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return SingleChildScrollView(
+      controller: widget.scrollController,
+      child: Form(
+        key: _formKey,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextFormField(
+              controller: titleController,
+              decoration: const InputDecoration(labelText: "Title"),
+              validator: (value) => value == null || value.isEmpty ? "Please enter a title" : null,
+            ),
+            const SizedBox(height: 12.0),
+            TextFormField(
+              controller: descriptionController,
+              decoration: const InputDecoration(labelText: "Description"),
+              validator: (value) => value == null || value.isEmpty ? "Please enter a description" : null,
+            ),
+            const SizedBox(height: 12.0),
+            DropdownButtonFormField<int>(
+              value: selectedCategoryId,
+              decoration: const InputDecoration(labelText: "Category"),
+              items: widget.categories.map((category) {
+                return DropdownMenuItem<int>(
+                  value: category.id,
+                  child: Text(category.name),
+                );
+              }).toList(),
+              onChanged: (value) {
+                if (value != null) {
+                  setState(() {
+                    selectedCategoryId = value;
+                  });
+                }
+              },
+              validator: (value) => value == null ? "Please select a category" : null,
+            ),
+            const SizedBox(height: 12.0),
+            Row(
               children: [
-                TextField(
-                  controller: titleController,
-                  decoration: InputDecoration(labelText: "Title"),
-                ),
-                TextField(
-                  controller: descriptionController,
-                  decoration: InputDecoration(labelText: "Description"),
-                ),
-                DropdownButtonFormField<int>(
-                  value: selectedCategoryId,
-                  decoration: InputDecoration(labelText: "Category"),
-                  items: categories.map((category) {
-                    return DropdownMenuItem<int>(
-                      value: category.id,
-                      child: Text(category.name),
-                    );
-                  }).toList(),
-                  onChanged: (value) {
-                    if (value != null) {
-                      selectedCategoryId = value;
-                    }
-                  },
-                ),
-                Row(
-                  children: [
-                    TextButton(
-                      onPressed: () => _selectDate(context),
-                      child: Text("Select Date"),
-                    ),
-                    Text("${selectedDate.toLocal()}".split(' ')[0]),
-                  ],
-                ),
-                Row(
-                  children: [
-                    TextButton(
-                      onPressed: () => _selectTime(context),
-                      child: Text("Select Time"),
-                    ),
-                    Text("${selectedTime.format(context)}"),
-                  ],
+                Expanded(
+                  child: OutlinedButton(
+                    onPressed: _selectDate,
+                    child: Text("Select Date: ${selectedDate.toLocal().toString().substring(0, 10)}"),
+                  ),
                 ),
               ],
             ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: Text("Cancel"),
-            ),
-            ElevatedButton(
-              onPressed: () {
-                final DateTime finalDeadline = DateTime(
-                  selectedDate.year,
-                  selectedDate.month,
-                  selectedDate.day,
-                  selectedTime.hour,
-                  selectedTime.minute,
-                );
-                context.read<TaskBloc>().add(
-                  UpdateTask(
-                    task.id,
-                    titleController.text,
-                    descriptionController.text,
-                    selectedCategoryId,
-                    finalDeadline,
+            const SizedBox(height: 12.0),
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton(
+                    onPressed: _selectTime,
+                    child: Text("Select Time: ${selectedTime.format(context)}"),
                   ),
-                );
-                Navigator.pop(context);
-              },
-              child: Text("Update"),
+                ),
+              ],
             ),
+            const SizedBox(height: 20.0),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text("Cancel"),
+                ),
+                const SizedBox(width: 12.0),
+                ElevatedButton(
+                  child: const Text("Update"),
+                  onPressed: () {
+                    if (_formKey.currentState!.validate()) {
+                      final DateTime finalDeadline = DateTime(
+                        selectedDate.year,
+                        selectedDate.month,
+                        selectedDate.day,
+                        selectedTime.hour,
+                        selectedTime.minute,
+                      );
+                      context.read<TaskBloc>().add(
+                        UpdateTask(
+                          widget.task.id,
+                          titleController.text,
+                          descriptionController.text,
+                          selectedCategoryId,
+                          finalDeadline,
+                        ),
+                      );
+                      Navigator.pop(context);
+                    }
+                  },
+                ),
+              ],
+            ),
+            const SizedBox(height: 12.0),
           ],
-        );
-      },
+        ),
+      ),
     );
   }
 }

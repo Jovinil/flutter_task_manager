@@ -1,6 +1,6 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:task_manager/models/task_model.dart';
-import 'package:task_manager/models/category_model.dart'; // Import Category model
+import 'package:task_manager/models/category_model.dart'; 
 import 'package:task_manager/services/api_service.dart';
 import 'task_event.dart';
 import 'task_state.dart';
@@ -10,19 +10,19 @@ class TaskBloc extends Bloc<TaskEvent, TaskState> {
 
   TaskBloc(this.apiService) : super(TaskInitial()) {
     on<LoadTasks>((event, emit) async {
-        print("Loading tasks..."); // Add logging for loading tasks
+        print("Loading tasks..."); 
 
       emit(TaskLoading());
       try {
         final tasks = await apiService.getTasks();
-        final categories = await apiService.getCategories(); // Fetch categories
+        final categories = await apiService.getCategories();
         tasks.sort((a, b) => a.title.toLowerCase().compareTo(b.title.toLowerCase()));
-        emit(TaskLoaded(tasks, categories)); // Include categories in state
-        print("Tasks loaded: ${tasks.length} tasks"); // Log the number of tasks loaded
+        emit(TaskLoaded(tasks, categories)); 
+        print("Tasks loaded: ${tasks.length} tasks");
 
       } catch (e) {
         emit(TaskError("Failed to fetch tasks and categories"));
-        print("Error fetching tasks: $e"); // Log the error
+        print("Error fetching tasks: $e");
 
       }
     });
@@ -37,10 +37,10 @@ class TaskBloc extends Bloc<TaskEvent, TaskState> {
         );
         final updatedTasks = List<Task>.from((state as TaskLoaded).tasks)..add(newTask);
         updatedTasks.sort((a, b) => a.title.toLowerCase().compareTo(b.title.toLowerCase()));
-        emit(TaskLoaded(updatedTasks, (state as TaskLoaded).categories)); // Pass categories
+        emit(TaskLoaded(updatedTasks, (state as TaskLoaded).categories)); 
       } catch (e) {
         emit(TaskError("Failed to add task"));
-        print("Error adding task: $e"); // Log the error
+        print("Error adding task: $e");
 
       }
     });
@@ -59,10 +59,10 @@ class TaskBloc extends Bloc<TaskEvent, TaskState> {
         }).toList();
 
         updatedTasks.sort((a, b) => a.title.toLowerCase().compareTo(b.title.toLowerCase()));
-        emit(TaskLoaded(updatedTasks, (state as TaskLoaded).categories)); // Pass categories
+        emit(TaskLoaded(updatedTasks, (state as TaskLoaded).categories));
       } catch (e) {
         emit(TaskError("Failed to update task"));
-        print("Error updating task: $e"); // Log the error
+        print("Error updating task: $e"); 
 
       }
     });
@@ -73,12 +73,12 @@ class TaskBloc extends Bloc<TaskEvent, TaskState> {
         final updatedTasks = (state as TaskLoaded).tasks
             .where((task) => task.id != event.id)
             .toList();
-        emit(TaskLoaded(updatedTasks, (state as TaskLoaded).categories)); // Pass categories
-        print("Task deleted with ID: ${event.id}"); // Log the deleted task ID
+        emit(TaskLoaded(updatedTasks, (state as TaskLoaded).categories));
+        print("Task deleted with ID: ${event.id}"); 
 
       } catch (e) {
         emit(TaskError("Failed to delete task"));
-        print("Error deleting task: $e"); // Log the error
+        print("Error deleting task: $e"); 
 
       }
     });

@@ -15,12 +15,12 @@ class TaskLoading extends TaskState {}
 
 class TaskLoaded extends TaskState {
   final List<Task> tasks;
-  final List<Category> categories; // Add categories
+  final List<Category> categories;
 
-  TaskLoaded(this.tasks, this.categories); // Update constructor
+  TaskLoaded(this.tasks, this.categories); 
 
   @override
-  List<Object> get props => [tasks, categories]; // Include categories in props
+  List<Object> get props => [tasks, categories];
 }
 
 class TaskError extends TaskState {
