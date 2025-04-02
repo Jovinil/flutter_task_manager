@@ -1,33 +1,46 @@
+
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../models/task_model.dart';
-import '../models/category_model.dart'; // Import Category model
+import '../models/category_model.dart';
 import '../bloc/task_bloc.dart';
 import '../bloc/task_event.dart';
 import '../bloc/task_state.dart';
 import 'task_detail.dart';
 
 class TaskList extends StatelessWidget {
+  const TaskList({Key? key}) : super(key: key);
+
   @override
   Widget build(BuildContext context) {
+    // Ensure Material 3 is enabled in the app theme (to be set in main.dart or theme configuration)
     return Scaffold(
-      appBar: AppBar(title: Text("Tasks")),
+      appBar: AppBar(
+        title: const Text("Tasks"),
+        centerTitle: true,
+      ),
       body: BlocBuilder<TaskBloc, TaskState>(
-      builder: (context, state) {
-        if (state is TaskLoading) return Center(child: CircularProgressIndicator());
-        if (state is TaskError) return Center(child: Text(state.message));
-        if (state is TaskLoaded) {
-          return ListView.builder(
-            itemCount: state.tasks.length,
-            itemBuilder: (context, index) {
-              final task = state.tasks[index];
-              return _buildTaskItem(context, task, state.categories);
-            },
-          );
-        }
-        return Center(child: Text("No tasks available."));
-      },
-    ),
+        builder: (context, state) {
+          if (state is TaskLoading) {
+            return const Center(child: CircularProgressIndicator());
+          }
+          if (state is TaskError) {
+            return Center(child: Text(state.message));
+          }
+          if (state is TaskLoaded) {
+            return ListView.separated(
+              padding: const EdgeInsets.all(8.0),
+              itemCount: state.tasks.length,
+              separatorBuilder: (context, index) => const SizedBox(height: 8.0),
+              itemBuilder: (context, index) {
+                final task = state.tasks[index];
+                return _buildTaskItem(context, task, state.categories);
+              },
+            );
+          }
+          return const Center(child: Text("No tasks available."));
+        },
+      ),
       floatingActionButton: BlocConsumer<TaskBloc, TaskState>(
         listener: (context, state) {
           if (state is TaskError) {
@@ -42,10 +55,10 @@ class TaskList extends StatelessWidget {
               onPressed: () {
                 _showAddTaskDialog(context, state.categories);
               },
-              child: Icon(Icons.add),
+              child: const Icon(Icons.add),
             );
           }
-          return Container();
+          return const SizedBox.shrink();
         },
       ),
     );
@@ -53,37 +66,49 @@ class TaskList extends StatelessWidget {
 }
 
 Widget _buildTaskItem(BuildContext context, Task task, List<Category> categories) {
+  // Use Card with subtle elevation and modern rounded corners.
+  final categoryName = categories.firstWhere((category) => category.id == task.categoryId,
+      orElse: () => Category(id: 0, name: "Unknown")).name;
   return Card(
-    margin: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 16.0),
+    elevation: 2.0,
+    margin: const EdgeInsets.symmetric(horizontal: 16.0),
+    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.0)),
     child: ListTile(
       contentPadding: const EdgeInsets.all(16.0),
-      title: Text(task.title, style: const TextStyle(fontWeight: FontWeight.bold)),
+      title: Text(
+        task.title,
+        style: const TextStyle(fontWeight: FontWeight.bold),
+      ),
       subtitle: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          const SizedBox(height: 4.0),
           Text(task.description),
-          SizedBox(height: 4.0),
-          Text("Category: ${categories.firstWhere((category) => category.id == task.categoryId).name}"),
-          Text("Deadline: ${task.deadline.toLocal().toString().split(' ')[0]}",
-              style: TextStyle(color: Colors.grey)),
+          const SizedBox(height: 8.0),
+          Text("Category: $categoryName"),
+          const SizedBox(height: 4.0),
+          Text(
+            "Deadline: ${task.deadline.toLocal().toString().split(' ')[0]}",
+            style: const TextStyle(color: Colors.grey),
+          ),
         ],
       ),
-      trailing: Row(
-        mainAxisSize: MainAxisSize.min,
+      trailing: Wrap(
+        spacing: 4.0,
         children: [
           IconButton(
-            icon: Icon(Icons.visibility, color: Colors.blue),
+            tooltip: "View Details",
+            icon: const Icon(Icons.visibility, color: Colors.blue),
             onPressed: () {
               Navigator.push(
                 context,
-                MaterialPageRoute(
-                  builder: (context) => TaskDetail(taskId: task.id),
-                ),
+                MaterialPageRoute(builder: (context) => TaskDetail(taskId: task.id)),
               );
             },
           ),
           IconButton(
-            icon: Icon(Icons.delete, color: Colors.red),
+            tooltip: "Delete Task",
+            icon: const Icon(Icons.delete, color: Colors.red),
             onPressed: () {
               context.read<TaskBloc>().add(DeleteTask(task.id));
             },
@@ -95,13 +120,54 @@ Widget _buildTaskItem(BuildContext context, Task task, List<Category> categories
 }
 
 void _showAddTaskDialog(BuildContext context, List<Category> categories) {
+  showModalBottomSheet(
+    context: context,
+    isScrollControlled: true, // allows the sheet to expand with keyboard
+    shape: const RoundedRectangleBorder(
+      borderRadius: BorderRadius.vertical(top: Radius.circular(20.0)),
+    ),
+    builder: (context) {
+      return DraggableScrollableSheet(
+        expand: false,
+        initialChildSize: 0.6,
+        minChildSize: 0.4,
+        maxChildSize: 0.8,
+        builder: (context, scrollController) {
+          return Padding(
+            padding: EdgeInsets.only(
+              bottom: MediaQuery.of(context).viewInsets.bottom,
+              left: 16.0,
+              right: 16.0,
+              top: 16.0,
+            ),
+            child: _AddTaskForm(categories: categories, scrollController: scrollController),
+          );
+        },
+      );
+    },
+  );
+}
+
+class _AddTaskForm extends StatefulWidget {
+  final List<Category> categories;
+  final ScrollController scrollController;
+  
+  const _AddTaskForm({Key? key, required this.categories, required this.scrollController}) : super(key: key);
+
+  @override
+  State<_AddTaskForm> createState() => _AddTaskFormState();
+}
+
+class _AddTaskFormState extends State<_AddTaskForm> {
+  final _formKey = GlobalKey<FormState>();
   final TextEditingController titleController = TextEditingController();
   final TextEditingController descriptionController = TextEditingController();
+  
   DateTime selectedDate = DateTime.now();
   TimeOfDay selectedTime = TimeOfDay.now();
   int? selectedCategoryId;
 
-  Future<void> _selectDate(BuildContext context) async {
+  Future<void> _selectDate() async {
     final DateTime? picked = await showDatePicker(
       context: context,
       initialDate: selectedDate,
@@ -109,76 +175,95 @@ void _showAddTaskDialog(BuildContext context, List<Category> categories) {
       lastDate: DateTime(2101),
     );
     if (picked != null && picked != selectedDate) {
-      selectedDate = picked;
+      setState(() {
+        selectedDate = picked;
+      });
     }
   }
 
-  Future<void> _selectTime(BuildContext context) async {
+  Future<void> _selectTime() async {
     final TimeOfDay? picked = await showTimePicker(
       context: context,
       initialTime: selectedTime,
     );
     if (picked != null && picked != selectedTime) {
-      selectedTime = picked;
+      setState(() {
+        selectedTime = picked;
+      });
     }
   }
 
-  showModalBottomSheet(
-    context: context,
-    builder: (context) {
-      return Padding(
-        padding: const EdgeInsets.all(16.0),
+  @override
+  Widget build(BuildContext context) {
+    return SingleChildScrollView(
+      controller: widget.scrollController,
+      child: Form(
+        key: _formKey,
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            TextField(
+            TextFormField(
               controller: titleController,
-              decoration: InputDecoration(labelText: "Title"),
+              decoration: const InputDecoration(labelText: "Title"),
+              validator: (value) => value == null || value.isEmpty ? "Please enter a title" : null,
             ),
-            TextField(
+            const SizedBox(height: 12.0),
+            TextFormField(
               controller: descriptionController,
-              decoration: InputDecoration(labelText: "Description"),
+              decoration: const InputDecoration(labelText: "Description"),
+              validator: (value) => value == null || value.isEmpty ? "Please enter a description" : null,
             ),
+            const SizedBox(height: 12.0),
             DropdownButtonFormField<int>(
-              decoration: InputDecoration(labelText: "Category"),
-              items: categories.map((category) {
+              decoration: const InputDecoration(labelText: "Category"),
+              items: widget.categories.map((category) {
                 return DropdownMenuItem<int>(
                   value: category.id,
                   child: Text(category.name),
                 );
               }).toList(),
               onChanged: (value) {
-                selectedCategoryId = value;
+                setState(() {
+                  selectedCategoryId = value;
+                });
               },
+              validator: (value) => value == null ? "Please select a category" : null,
             ),
+            const SizedBox(height: 12.0),
             Row(
               children: [
-                TextButton(
-                  onPressed: () => _selectDate(context),
-                  child: Text("Select Date"),
+                Expanded(
+                  child: OutlinedButton(
+                    onPressed: _selectDate,
+                    child: Text("Select Date: ${selectedDate.toLocal().toString().split(' ')[0]}"),
+                  ),
                 ),
-                Text("${selectedDate.toLocal()}".split(' ')[0]),
               ],
             ),
+            const SizedBox(height: 12.0),
             Row(
               children: [
-                TextButton(
-                  onPressed: () => _selectTime(context),
-                  child: Text("Select Time"),
+                Expanded(
+                  child: OutlinedButton(
+                    onPressed: _selectTime,
+                    child: Text("Select Time: ${selectedTime.format(context)}"),
+                  ),
                 ),
-                Text("${selectedTime.format(context)}"),
               ],
             ),
+            const SizedBox(height: 20.0),
             Row(
               mainAxisAlignment: MainAxisAlignment.end,
               children: [
                 TextButton(
                   onPressed: () => Navigator.pop(context),
-                  child: Text("Cancel"),
+                  child: const Text("Cancel"),
                 ),
+                const SizedBox(width: 12.0),
                 ElevatedButton(
+                  child: const Text("Add"),
                   onPressed: () {
-                    if (selectedCategoryId != null) {
+                    if (_formKey.currentState!.validate()) {
                       final DateTime finalDeadline = DateTime(
                         selectedDate.year,
                         selectedDate.month,
@@ -195,19 +280,15 @@ void _showAddTaskDialog(BuildContext context, List<Category> categories) {
                         ),
                       );
                       Navigator.pop(context);
-                    } else {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text("Please select a category.")),
-                      );
                     }
                   },
-                  child: Text("Add"),
                 ),
               ],
             ),
+            const SizedBox(height: 12.0),
           ],
         ),
-      );
-    },
-  );
+      ),
+    );
+  }
 }
