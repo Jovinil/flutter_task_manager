@@ -8,6 +8,8 @@ import '../bloc/task_event.dart';
 import '../bloc/task_state.dart';
 import 'task_detail.dart';
 
+import '../db/database_helper.dart';
+
 // Helper function to choose an icon based on category id.
 IconData getCategoryIcon(int categoryId) {
   switch (categoryId) {
@@ -54,24 +56,14 @@ class TaskList extends StatelessWidget {
           return const Center(child: Text("No tasks available."));
         },
       ),
-      floatingActionButton: BlocConsumer<TaskBloc, TaskState>(
-        listener: (context, state) {
-          if (state is TaskError) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text(state.message)),
-            );
-          }
-        },
-        builder: (context, state) {
-          if (state is TaskLoaded) {
-            return FloatingActionButton(
-              onPressed: () {
-                _showAddTaskDialog(context, state.categories);
-              },
-              child: const Icon(Icons.add),
-            );
-          }
-          return const SizedBox.shrink();
+      floatingActionButton: Builder(
+        builder: (context) {
+          return FloatingActionButton(
+            onPressed: () {
+              _showAddTaskDialog(context);
+            },
+            child: const Icon(Icons.add),
+          );
         },
       ),
     );
@@ -119,7 +111,7 @@ Widget _buildTaskItem(BuildContext context, Task task, List<Category> categories
   );
 }
 
-void _showAddTaskDialog(BuildContext context, List<Category> categories) {
+void _showAddTaskDialog(BuildContext context) {
   showModalBottomSheet(
     context: context,
     isScrollControlled: true,
@@ -140,7 +132,7 @@ void _showAddTaskDialog(BuildContext context, List<Category> categories) {
               right: 16.0,
               top: 16.0,
             ),
-            child: _AddTaskForm(categories: categories, scrollController: scrollController),
+            child: _AddTaskForm(scrollController: scrollController),
           );
         },
       );
@@ -148,11 +140,11 @@ void _showAddTaskDialog(BuildContext context, List<Category> categories) {
   );
 }
 
+
 class _AddTaskForm extends StatefulWidget {
-  final List<Category> categories;
   final ScrollController scrollController;
   
-  const _AddTaskForm({Key? key, required this.categories, required this.scrollController}) : super(key: key);
+  const _AddTaskForm({Key? key, required this.scrollController}) : super(key: key);
 
   @override
   State<_AddTaskForm> createState() => _AddTaskFormState();
@@ -162,10 +154,29 @@ class _AddTaskFormState extends State<_AddTaskForm> {
   final _formKey = GlobalKey<FormState>();
   final TextEditingController titleController = TextEditingController();
   final TextEditingController descriptionController = TextEditingController();
-  
+
   DateTime selectedDate = DateTime.now();
   TimeOfDay selectedTime = TimeOfDay.now();
   int? selectedCategoryId;
+
+  List<Category> categories = [];
+  final ApiService apiService = ApiService();
+
+  @override
+  void initState() {
+    super.initState();
+    _loadCategories();
+  }
+
+  Future<void> _loadCategories() async {
+    final loadedCategories = await apiService.getCategories();
+    setState(() {
+      categories = loadedCategories;
+      if (categories.isNotEmpty) {
+        selectedCategoryId = categories.first.id;
+      }
+    });
+  }
 
   Future<void> _selectDate() async {
     final DateTime? picked = await showDatePicker(
@@ -215,8 +226,9 @@ class _AddTaskFormState extends State<_AddTaskForm> {
             ),
             const SizedBox(height: 12.0),
             DropdownButtonFormField<int>(
+              value: selectedCategoryId,
               decoration: const InputDecoration(labelText: "Category"),
-              items: widget.categories.map((category) {
+              items: categories.map((category) {
                 return DropdownMenuItem<int>(
                   value: category.id,
                   child: Text(category.name),

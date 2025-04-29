@@ -1,7 +1,7 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:task_manager/models/task_model.dart';
 import 'package:task_manager/models/category_model.dart'; 
-import 'package:task_manager/services/api_service.dart';
+import 'package:task_manager/db/database_helper.dart';
 import 'task_event.dart';
 import 'task_state.dart';
 
